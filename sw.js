@@ -1,4 +1,4 @@
-const CACHE = 'my-gallery-v1';
+const CACHE = 'my-gallery-v2';
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', (event) => {
