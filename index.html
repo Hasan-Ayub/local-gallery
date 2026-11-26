@@ -21,10 +21,10 @@
       </div>
     </div>
     <div class="top-actions">
-      <button class="btn primary" id="addBtn" type="button">+ Add media</button>
+      <label class="btn primary file-label">+ Photos<input class="file-input photo-picker" type="file" accept="image/*" multiple></label>
+      <label class="btn ghost file-label">+ Videos<input class="file-input video-picker" type="file" accept="video/*" multiple></label>
       <button class="btn ghost hidden" id="folderBtn" type="button">Choose folder</button>
       <button class="btn ghost hidden" id="reconnectBtn" type="button">Reconnect folder</button>
-      <input id="fileInput" type="file" accept="image/*,video/*" multiple hidden>
     </div>
   </header>
 
@@ -47,6 +47,13 @@
           <option value="name">Name A–Z</option>
         </select>
       </label>
+      <label class="repeat"><input id="repeat" type="checkbox"> One-by-one mode</label>
+      <button class="btn ghost hidden" id="nextPick" type="button">Add next</button>
+    </section>
+
+    <section class="ios-tip" id="iosTip">
+      <b>iPhone:</b> when the menu appears, tap <b>Photo Library</b> — that lets you select many at once.
+      <b>Browse</b> only allows one file. If your phone still won’t multi-select, tick <b>One-by-one mode</b> and tap <b>Add next</b> after each pick.
     </section>
 
     <section class="status" id="status">
@@ -63,8 +70,11 @@
       <div class="empty-icon" aria-hidden="true">▧</div>
       <h2>Your gallery is empty</h2>
       <p>Add photos and videos from this device. They stay in this browser — nothing is uploaded anywhere.</p>
-      <button class="btn primary large" id="emptyAdd" type="button">Choose photos & videos</button>
-      <p class="hint" id="iosHint">On iPhone, use the picker to select from Photos. You can select many at once.</p>
+      <div class="empty-actions">
+        <label class="btn primary large file-label">Choose photos<input class="file-input photo-picker" type="file" accept="image/*" multiple></label>
+        <label class="btn ghost large file-label">Choose videos<input class="file-input video-picker" type="file" accept="video/*" multiple></label>
+      </div>
+      <p class="hint">On iPhone: tap <b>Photo Library</b> in the menu, not Browse.</p>
     </section>
 
     <section id="grid" class="grid" aria-label="Media gallery" hidden></section>

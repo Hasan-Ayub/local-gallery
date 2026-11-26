@@ -2,6 +2,10 @@
   'use strict';
 
   const $ = (id) => document.getElementById(id);
+
+  function clearElement(el) {
+    while (el.firstChild) el.removeChild(el.firstChild);
+  }
   const DB_NAME = 'my-local-gallery';
   const DB_VERSION = 1;
   const MAX_FOLDER_FILES = 10000;
@@ -171,28 +175,39 @@
 
   async function scanFolder() {
     const out = [];
-    async function walk(handle, path) {
-      if (out.length >= MAX_FOLDER_FILES) return;
-      for await (const [name, entry] of handle.entries()) {
-        if (out.length >= MAX_FOLDER_FILES) break;
-        if (entry.kind === 'file') {
-          const type = detectType(name);
-          if (type) {
-            const file = await entry.getFile();
-            out.push({
-              id: 'folder:' + path + name,
-              name,
-              type,
-              blob: file,
-              size: file.size,
-              createdAt: file.lastModified || Date.now(),
-              folder: true
-            });
-          }
-        } else if (entry.kind === 'directory') {
-          await walk(entry, path + name + '/');
+    function walk(handle, path) {
+      return new Promise(function (resolve, reject) {
+        const iterator = handle.entries();
+        function next() {
+          if (out.length >= MAX_FOLDER_FILES) { resolve(); return; }
+          iterator.next().then(function (step) {
+            if (step.done) { resolve(); return; }
+            const name = step.value[0];
+            const entry = step.value[1];
+            if (entry.kind === 'file') {
+              const type = detectType(name);
+              if (!type) { next(); return; }
+              entry.getFile().then(function (file) {
+                out.push({
+                  id: 'folder:' + path + name,
+                  name: name,
+                  type: type,
+                  blob: file,
+                  size: file.size,
+                  createdAt: file.lastModified || Date.now(),
+                  folder: true
+                });
+                next();
+              }, reject);
+            } else if (entry.kind === 'directory') {
+              walk(entry, path + name + '/').then(next, reject);
+            } else {
+              next();
+            }
+          }, reject);
         }
-      }
+        next();
+      });
     }
     await walk(folderHandle, '');
     folderItems = out;
@@ -301,7 +316,8 @@
     $('empty').hidden = count !== 0;
     $('grid').hidden = count === 0;
     const cards = await Promise.all(visibleItems.map(makeCard));
-    $('grid').replaceChildren(...cards);
+    clearElement($('grid'));
+    cards.forEach(function (card) { $('grid').appendChild(card); });
     await updateStorage();
   }
 
@@ -327,7 +343,7 @@
 
   function closeLightbox() {
     $('lightbox').hidden = true;
-    $('lbStage').replaceChildren();
+    clearElement($('lbStage'));
     document.body.style.overflow = '';
     lightboxIndex = -1;
   }
@@ -337,7 +353,7 @@
     if (!item) { closeLightbox(); return; }
     const url = await objectURL(item);
     const stage = $('lbStage');
-    stage.replaceChildren();
+    clearElement(stage);
 
     if (item.type === 'video') {
       const video = document.createElement('video');
@@ -385,17 +401,36 @@
     a.download = item.name;
     document.body.appendChild(a);
     a.click();
-    a.remove();
+    if (a.parentNode) a.parentNode.removeChild(a);
   }
 
   /* ---------- Events ---------- */
 
   function bindEvents() {
-    $('addBtn').addEventListener('click', () => $('fileInput').click());
-    $('emptyAdd').addEventListener('click', () => $('fileInput').click());
-    $('fileInput').addEventListener('change', (e) => {
-      addFiles(e.target.files);
-      e.target.value = '';
+    let lastPicker = null;
+
+    function handlePicker(e) {
+      const input = e.target;
+      const files = input.files;
+      lastPicker = input;
+      if (!files || !files.length) return;
+      addFiles(files);
+      input.value = '';
+      if ($('repeat').checked) $('nextPick').classList.remove('hidden');
+    }
+
+    Array.prototype.forEach.call(
+      document.querySelectorAll('.photo-picker, .video-picker'),
+      function (input) { input.addEventListener('change', handlePicker); }
+    );
+
+    $('nextPick').addEventListener('click', function () {
+      if (lastPicker) lastPicker.click();
+      $('nextPick').classList.add('hidden');
+    });
+
+    $('repeat').addEventListener('change', function (e) {
+      if (!e.target.checked) $('nextPick').classList.add('hidden');
     });
 
     $('folderBtn').addEventListener('click', chooseFolder);
@@ -406,9 +441,9 @@
       render();
     });
     $('sort').addEventListener('change', (e) => { sort = e.target.value; render(); });
-    document.querySelectorAll('.seg').forEach((btn) => {
+    Array.prototype.forEach.call(document.querySelectorAll('.seg'), function (btn) {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.seg').forEach((b) => b.classList.remove('active'));
+        Array.prototype.forEach.call(document.querySelectorAll('.seg'), function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
         filter = btn.dataset.filter;
         render();
